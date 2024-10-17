@@ -8,6 +8,7 @@ import { OpenAiHandler } from "./providers/openai"
 import { OllamaHandler } from "./providers/ollama"
 import { GeminiHandler } from "./providers/gemini"
 import { OpenAiNativeHandler } from "./providers/openai-native"
+import { GenericAIGatewayHandler } from "./providers/generic-aigateway"
 import { ApiStream } from "./transform/stream"
 
 export interface ApiHandler {
@@ -34,6 +35,8 @@ export function buildApiHandler(configuration: ApiConfiguration): ApiHandler {
 			return new GeminiHandler(options)
 		case "openai-native":
 			return new OpenAiNativeHandler(options)
+		case "generic-aigateway":
+			return new GenericAIGatewayHandler(options)
 		default:
 			return new AnthropicHandler(options)
 	}
