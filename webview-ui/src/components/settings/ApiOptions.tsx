@@ -1001,6 +1001,25 @@ export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration, a
 					description: "Generic AIGateway model",
 				},
 			}
+		case "generic-aigateway":
+			if (aiGatewayConfig && apiConfiguration?.apiModelId) {
+				const selectedModel = aiGatewayConfig.models.find(m => m.id === apiConfiguration.apiModelId);
+				if (selectedModel) {
+					return {
+						selectedProvider: provider,
+						selectedModelId: selectedModel.id,
+						selectedModelInfo: selectedModel.info,
+					};
+				}
+			}
+			return {
+				selectedProvider: provider,
+				selectedModelId: apiConfiguration?.apiModelId || "",
+				selectedModelInfo: {
+					...openAiModelInfoSaneDefaults,
+					description: "Generic AIGateway model",
+				},
+			}
 		default:
 			return getProviderData(anthropicModels, anthropicDefaultModelId)
 	}
