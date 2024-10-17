@@ -123,3 +123,64 @@ To contribute to the project, start by exploring [open issues](https://github.co
 ## License
 
 [Apache 2.0 © 2024 Cline Bot Inc.](./LICENSE)
+### Configuring Generic AIGateway Provider
+
+To use the Generic AIGateway provider, follow these steps:
+
+1. **Select "Generic AIGateway" as the API Provider:**
+
+   In the settings, choose **Generic AIGateway** from the API Provider dropdown menu.
+
+2. **Enter the Configuration URL and API Key:**
+
+   - **Configuration URL:** Provide the URL to your AIGateway JSON configuration file.
+   - **API Key (Optional):** Enter the API key required for authentication with your AIGateway.
+
+   *Note: This information is stored locally and is only used to make API requests from this extension.*
+
+3. **Load and Select Models:**
+
+   - The extension will load the available models defined in your configuration file.
+   - Select the desired model from the Model dropdown menu.
+
+**About the Configuration File:**
+
+The JSON configuration file should contain the following information:
+
+- **API Endpoint Details:**
+  - Host, port, and base URI for the AIGateway.
+- **Authentication Headers:**
+  - Any required headers for authentication (e.g., API keys, tokens).
+  - Supports use of environment variables.
+- **Available Models:**
+  - A list of models that can be used with the AIGateway.
+
+**Example Configuration File:**
+
+```json
+{
+  "host": "https://your-aigateway.com",
+  "baseUri": "/api/v1",
+  "headers": {
+    "Authorization": "Bearer YOUR_API_KEY"
+  },
+  "models": [
+    {
+      "id": "model-1",
+      "info": {
+        "description": "Your custom model description",
+        "maxTokens": 2048,
+        "supportsImages": true
+      }
+    }
+  ]
+}
+```
+
+**Important Notes:**
+
+- Ensure that the Configuration URL is accessible and returns a valid JSON configuration.
+- The API Key, if required, will be included in the headers when making API requests.
+- The extension will use the details provided in the configuration file to interact with your custom AI backend.
+
+For more information on setting up a custom AIGateway, refer to your organization's documentation or the AIGateway provider's guidelines.
