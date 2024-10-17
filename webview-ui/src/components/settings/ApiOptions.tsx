@@ -131,9 +131,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 		selectedProvider,
 		apiConfiguration?.aiGatewayConfigUrl,
 		apiConfiguration?.aiGatewayApiKey,
-		loadAIGatewayConfig, setAiGatewayConfig,
-		setAiGatewayConfig,
-		setAiGatewayConfig,
+		loadAIGatewayConfig
 	]);
 
 	useEffect(() => {
@@ -597,8 +595,8 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 								setAiGatewayUrlError('');
 							}
 						}}
-						placeholder="Enter configuration URL...">
-						aria-label="AIGateway Configuration URL"
+						placeholder="Enter configuration URL..."
+						aria-label="AIGateway Configuration URL">
 						<span style={{ fontWeight: 500 }}>AIGateway Configuration URL</span>
 					</VSCodeTextField>
 					{aiGatewayUrlError && (
@@ -611,8 +609,8 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 						style={{ width: "100%" }}
 						type="password"
 						onInput={handleInputChange("aiGatewayApiKey")}
-						aria-label="AIGateway API Key"
-						placeholder="Enter API Key...">
+						placeholder="Enter API Key..."
+						aria-label="AIGateway API Key">
 						<span style={{ fontWeight: 500 }}>AIGateway API Key</span>
 					</VSCodeTextField>
 					{isLoadingConfig ? (
@@ -836,66 +834,88 @@ export const ModelInfoView = ({
 	)
 }
 
-export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration, aiGatewayConfig?: AIGatewayConfig | null) {
-	const provider = apiConfiguration?.apiProvider || "anthropic"
-	const modelId = apiConfiguration?.apiModelId
+export function normalizeApiConfiguration(
+  apiConfiguration?: ApiConfiguration,
+  aiGatewayConfig?: AIGatewayConfig | null
+) {
+  const provider = apiConfiguration?.apiProvider || "anthropic";
+  const modelId = apiConfiguration?.apiModelId;
 
-	const getProviderData = (models: Record<string, ModelInfo>, defaultId: string) => {
-		let selectedModelId: string
-		let selectedModelInfo: ModelInfo
-		if (modelId && modelId in models) {
-			selectedModelId = modelId
-			selectedModelInfo = models[modelId]
-		} else {
-			selectedModelId = defaultId
-			selectedModelInfo = models[defaultId]
-		}
-		return { selectedProvider: provider, selectedModelId, selectedModelInfo }
-	}
-	switch (provider) {
-		case "anthropic":
-			return getProviderData(anthropicModels, anthropicDefaultModelId)
-		case "bedrock":
-			return getProviderData(bedrockModels, bedrockDefaultModelId)
-		case "vertex":
-			return getProviderData(vertexModels, vertexDefaultModelId)
-		case "gemini":
-			return getProviderData(geminiModels, geminiDefaultModelId)
-		case "openai-native":
-			return getProviderData(openAiNativeModels, openAiNativeDefaultModelId)
-		case "openrouter":
-			return {
-				selectedProvider: provider,
-				selectedModelId: apiConfiguration?.openRouterModelId || openRouterDefaultModelId,
-				selectedModelInfo: apiConfiguration?.openRouterModelInfo || openRouterDefaultModelInfo,
-			}
-		case "openai":
-			return {
-				selectedProvider: provider,
-				selectedModelId: apiConfiguration?.openAiModelId || "",
-				selectedModelInfo: openAiModelInfoSaneDefaults,
-			}
-		case "ollama":
-			return {
-				selectedProvider: provider,
-				selectedModelId: apiConfiguration?.ollamaModelId || "",
-				selectedModelInfo: openAiModelInfoSaneDefaults,
-			}
-		case "generic-aigateway":
-								maxTokens: undefined,
-								contextWindow: undefined,
-								supportsImages: false,
-								supportsPromptCache: false,
-								description: "Generic AIGateway model",
-							},
-						};
-					default:
-						return getProviderData(anthropicModels, anthropicDefaultModelId);
-				}
-			}
-		default:
-			return getProviderData(anthropicModels, anthropicDefaultModelId)
-	}
+  const getProviderData = (models: Record<string, ModelInfo>, defaultId: string) => {
+    let selectedModelId: string;
+    let selectedModelInfo: ModelInfo;
+    if (modelId && modelId in models) {
+      selectedModelId = modelId;
+      selectedModelInfo = models[modelId];
+    } else {
+      selectedModelId = defaultId;
+      selectedModelInfo = models[defaultId];
+    }
+    return { selectedProvider: provider, selectedModelId, selectedModelInfo };
+  };
+
+  switch (provider) {
+    case "anthropic":
+      return getProviderData(anthropicModels, anthropicDefaultModelId);
+    case "bedrock":
+      return getProviderData(bedrockModels, bedrockDefaultModelId);
+    case "vertex":
+      return getProviderData(vertexModels, vertexDefaultModelId);
+    case "gemini":
+      return getProviderData(geminiModels, geminiDefaultModelId);
+    case "openai-native":
+      return getProviderData(openAiNativeModels, openAiNativeDefaultModelId);
+    case "openrouter":
+      return {
+        selectedProvider: provider,
+        selectedModelId: apiConfiguration?.openRouterModelId || openRouterDefaultModelId,
+        selectedModelInfo: apiConfiguration?.openRouterModelInfo || openRouterDefaultModelInfo,
+      };
+    case "openai":
+      return {
+        selectedProvider: provider,
+        selectedModelId: apiConfiguration?.openAiModelId || "",
+        selectedModelInfo: openAiModelInfoSaneDefaults,
+      };
+    case "ollama":
+      return {
+        selectedProvider: provider,
+        selectedModelId: apiConfiguration?.ollamaModelId || "",
+        selectedModelInfo: openAiModelInfoSaneDefaults,
+      };
+    case "generic-aigateway":
+      if (aiGatewayConfig && aiGatewayConfig.models && aiGatewayConfig.models.length > 0) {
+        const models = aiGatewayConfig.models.reduce((acc, model) => {
+          acc[model.id] = model.info;
+          return acc;
+        }, {} as Record<string, ModelInfo>);
+        const defaultModelId = aiGatewayConfig.models[0].id;
+        return getProviderData(models, defaultModelId);
+      } else {
+        return {
+          selectedProvider: provider,
+          selectedModelId: apiConfiguration?.apiModelId || "",
+          selectedModelInfo: {
+            maxTokens: undefined,
+            contextWindow: undefined,
+            supportsImages: false,
+            supportsPromptCache: false,
+            description: "Generic AIGateway model",
+          },
+        };
+      }
+    default:
+      return getProviderData(anthropicModels, anthropicDefaultModelId);
+  }
 }
 
 export default memo(ApiOptions)
+interface AIGatewayConfig {
+  host: string;
+  baseUri?: string;
+  headers?: Record<string, string>;
+  models: Array<{
+    id: string;
+    info: ModelInfo;
+  }>;
+}
