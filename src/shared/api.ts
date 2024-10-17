@@ -7,6 +7,7 @@ export type ApiProvider =
 	| "ollama"
 	| "gemini"
 	| "openai-native"
+	| "generic-aigateway"
 
 export interface ApiHandlerOptions {
 	apiModelId?: string
@@ -29,108 +30,110 @@ export interface ApiHandlerOptions {
 	geminiApiKey?: string
 	openAiNativeApiKey?: string
 	azureApiVersion?: string
+	aiGatewayApiKey?: string
+	aiGatewayConfigUrl?: string
 }
 
 export type ApiConfiguration = ApiHandlerOptions & {
-	apiProvider?: ApiProvider
-}
-
-// Models
-
-export interface ModelInfo {
-	maxTokens?: number
-	contextWindow?: number
-	supportsImages?: boolean
-	supportsPromptCache: boolean // this value is hardcoded for now
-	inputPrice?: number
-	outputPrice?: number
-	cacheWritesPrice?: number
-	cacheReadsPrice?: number
-	description?: string
-}
-
-// Anthropic
-// https://docs.anthropic.com/en/docs/about-claude/models
-export type AnthropicModelId = keyof typeof anthropicModels
-export const anthropicDefaultModelId: AnthropicModelId = "claude-3-5-sonnet-20240620"
-export const anthropicModels = {
-	"claude-3-5-sonnet-20240620": {
+		apiProvider?: ApiProvider
+	}
+	
+	// Models
+	
+	export interface ModelInfo {
+		maxTokens?: number
+		contextWindow?: number
+		supportsImages?: boolean
+		supportsPromptCache: boolean // this value is hardcoded for now
+		inputPrice?: number
+		outputPrice?: number
+		cacheWritesPrice?: number
+		cacheReadsPrice?: number
+		description?: string
+	}
+	
+	// Anthropic
+	// https://docs.anthropic.com/en/docs/about-claude/models
+	export type AnthropicModelId = keyof typeof anthropicModels
+	export const anthropicDefaultModelId: AnthropicModelId = "claude-3-5-sonnet-20240620"
+	export const anthropicModels = {
+		"claude-3-5-sonnet-20240620": {
+			maxTokens: 8192,
+			contextWindow: 200_000,
+			supportsImages: true,
+			supportsPromptCache: true,
+			inputPrice: 3.0, // $3 per million input tokens
+			outputPrice: 15.0, // $15 per million output tokens
+			cacheWritesPrice: 3.75, // $3.75 per million tokens
+			cacheReadsPrice: 0.3, // $0.30 per million tokens
+		},
+		"claude-3-opus-20240229": {
+			maxTokens: 4096,
+			contextWindow: 200_000,
+			supportsImages: true,
+			supportsPromptCache: true,
+			inputPrice: 15.0,
+			outputPrice: 75.0,
+			cacheWritesPrice: 18.75,
+			cacheReadsPrice: 1.5,
+		},
+		"claude-3-haiku-20240307": {
+			maxTokens: 4096,
+			contextWindow: 200_000,
+			supportsImages: true,
+			supportsPromptCache: true,
+			inputPrice: 0.25,
+			outputPrice: 1.25,
+			cacheWritesPrice: 0.3,
+			cacheReadsPrice: 0.03,
+		},
+	} as const satisfies Record<string, ModelInfo> // as const assertion makes the object deeply readonly
+	
+	// AWS Bedrock
+	// https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html
+	export type BedrockModelId = keyof typeof bedrockModels
+	export const bedrockDefaultModelId: BedrockModelId = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+	export const bedrockModels = {
+		"anthropic.claude-3-5-sonnet-20240620-v1:0": {
+			maxTokens: 8192,
+			contextWindow: 200_000,
+			supportsImages: true,
+			supportsPromptCache: false,
+			inputPrice: 3.0,
+			outputPrice: 15.0,
+		},
+		"anthropic.claude-3-opus-20240229-v1:0": {
+			maxTokens: 4096,
+			contextWindow: 200_000,
+			supportsImages: true,
+			supportsPromptCache: false,
+			inputPrice: 15.0,
+			outputPrice: 75.0,
+		},
+		"anthropic.claude-3-haiku-20240307-v1:0": {
+			maxTokens: 4096,
+			contextWindow: 200_000,
+			supportsImages: true,
+			supportsPromptCache: false,
+			inputPrice: 0.25,
+			outputPrice: 1.25,
+		},
+	} as const satisfies Record<string, ModelInfo>
+	
+	// OpenRouter
+	// https://openrouter.ai/models?order=newest&supported_parameters=tools
+	export const openRouterDefaultModelId = "anthropic/claude-3.5-sonnet:beta" // will always exist in openRouterModels
+	export const openRouterDefaultModelInfo: ModelInfo = {
 		maxTokens: 8192,
 		contextWindow: 200_000,
 		supportsImages: true,
 		supportsPromptCache: true,
-		inputPrice: 3.0, // $3 per million input tokens
-		outputPrice: 15.0, // $15 per million output tokens
-		cacheWritesPrice: 3.75, // $3.75 per million tokens
-		cacheReadsPrice: 0.3, // $0.30 per million tokens
-	},
-	"claude-3-opus-20240229": {
-		maxTokens: 4096,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 15.0,
-		outputPrice: 75.0,
-		cacheWritesPrice: 18.75,
-		cacheReadsPrice: 1.5,
-	},
-	"claude-3-haiku-20240307": {
-		maxTokens: 4096,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: true,
-		inputPrice: 0.25,
-		outputPrice: 1.25,
-		cacheWritesPrice: 0.3,
-		cacheReadsPrice: 0.03,
-	},
-} as const satisfies Record<string, ModelInfo> // as const assertion makes the object deeply readonly
-
-// AWS Bedrock
-// https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html
-export type BedrockModelId = keyof typeof bedrockModels
-export const bedrockDefaultModelId: BedrockModelId = "anthropic.claude-3-5-sonnet-20240620-v1:0"
-export const bedrockModels = {
-	"anthropic.claude-3-5-sonnet-20240620-v1:0": {
-		maxTokens: 8192,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: false,
 		inputPrice: 3.0,
 		outputPrice: 15.0,
-	},
-	"anthropic.claude-3-opus-20240229-v1:0": {
-		maxTokens: 4096,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: false,
-		inputPrice: 15.0,
-		outputPrice: 75.0,
-	},
-	"anthropic.claude-3-haiku-20240307-v1:0": {
-		maxTokens: 4096,
-		contextWindow: 200_000,
-		supportsImages: true,
-		supportsPromptCache: false,
-		inputPrice: 0.25,
-		outputPrice: 1.25,
-	},
-} as const satisfies Record<string, ModelInfo>
-
-// OpenRouter
-// https://openrouter.ai/models?order=newest&supported_parameters=tools
-export const openRouterDefaultModelId = "anthropic/claude-3.5-sonnet:beta" // will always exist in openRouterModels
-export const openRouterDefaultModelInfo: ModelInfo = {
-	maxTokens: 8192,
-	contextWindow: 200_000,
-	supportsImages: true,
-	supportsPromptCache: true,
-	inputPrice: 3.0,
-	outputPrice: 15.0,
-	cacheWritesPrice: 3.75,
-	cacheReadsPrice: 0.3,
-	description:
-		"Claude 3.5 Sonnet delivers better-than-Opus capabilities, faster-than-Sonnet speeds, at the same Sonnet prices. Sonnet is particularly good at:\n\n- Coding: Autonomously writes, edits, and runs code with reasoning and troubleshooting\n- Data science: Augments human data science expertise; navigates unstructured data while using multiple tools for insights\n- Visual processing: excelling at interpreting charts, graphs, and images, accurately transcribing text to derive insights beyond just the text alone\n- Agentic tasks: exceptional tool use, making it great at agentic tasks (i.e. complex, multi-step problem solving tasks that require engaging with other systems)\n\n#multimodal\n\n_This is a faster endpoint, made available in collaboration with Anthropic, that is self-moderated: response moderation happens on the provider's side instead of OpenRouter's. For requests that pass moderation, it's identical to the [Standard](/models/anthropic/claude-3.5-sonnet) variant._",
+		cacheWritesPrice: 3.75,
+		cacheReadsPrice: 0.3,
+		description:
+			"Claude 3.5 Sonnet delivers better-than-Opus capabilities, faster-than-Sonnet speeds, at the same Sonnet prices. Sonnet is particularly good at:\n\n- Coding: Autonomously writes, edits, and runs code with reasoning and troubleshooting\n- Data science: Augments human data science expertise; navigates unstructured data while using multiple tools for insights\n- Visual processing: excelling at interpreting charts, graphs, and images, accurately transcribing text to derive insights beyond just the text alone\n- Agentic tasks: exceptional tool use, making it great at agentic tasks (i.e. complex, multi-step problem solving tasks that require engaging with other systems)\n\n#multimodal\n\n_This is a faster endpoint, made available in collaboration with Anthropic, that is self-moderated: response moderation happens on the provider's side instead of OpenRouter's. For requests that pass moderation, it's identical to the [Standard](/models/anthropic/claude-3.5-sonnet) variant._",
 }
 
 // Vertex AI
