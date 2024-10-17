@@ -36,6 +36,15 @@ import OpenRouterModelPicker, {
 	OPENROUTER_MODEL_PICKER_Z_INDEX,
 } from "./OpenRouterModelPicker"
 
+function isValidUrl(url: string): boolean {
+	try {
+		new URL(url);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 interface ApiOptionsProps {
 	showModelOptions: boolean
 	apiErrorMessage?: string
@@ -62,6 +71,9 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 	const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 	const [aiGatewayConfig, setAiGatewayConfig] = useState<AIGatewayConfig | null>(null)
 	const [aiGatewayConfig, setAiGatewayConfig] = useState<AIGatewayConfig | null>(null)
+	const [aiGatewayUrlError, setAiGatewayUrlError] = useState<string>('');
+	const [isLoadingConfig, setIsLoadingConfig] = useState<boolean>(false);
+	const [configLoadError, setConfigLoadError] = useState<string>('');
 
 	const handleInputChange = (field: keyof ApiConfiguration) => (event: any) => {
 		setApiConfiguration({ ...apiConfiguration, [field]: event.target.value })
@@ -93,23 +105,47 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 	useEvent("message", handleMessage)
 
 	const loadAIGatewayConfig = useCallback(async () => {
-		if (apiConfiguration?.aiGatewayConfigUrl) {
-			try {
-				const response = await fetch(apiConfiguration.aiGatewayConfigUrl);
-				const config: AIGatewayConfig = await response.json();
-				setAiGatewayConfig(config);
-			} catch (error) {
-				console.error("Failed to load AIGateway configuration:", error);
-				setAiGatewayConfig(null);
-			}
+		if (!apiConfiguration?.aiGatewayConfigUrl) {
+			return;
 		}
-	}, [apiConfiguration?.aiGatewayConfigUrl]);
+		setIsLoadingConfig(true);
+		setConfigLoadError('');
+		try {
+			const response = await fetch(apiConfiguration.aiGatewayConfigUrl, {
+				headers: apiConfiguration.aiGatewayApiKey
+					? { Authorization: `Bearer ${apiConfiguration.aiGatewayApiKey}` }
+					: {},
+			});
+			if (!response.ok) {
+				throw new Error(`Failed to fetch configuration: ${response.statusText}`);
+			}
+			const config: AIGatewayConfig = await response.json();
+			setAiGatewayConfig(config);
+		} catch (error: any) {
+			console.error('Failed to load AIGateway configuration:', error);
+			setAiGatewayConfig(null);
+			setConfigLoadError(error.message || 'Failed to load configuration');
+		} finally {
+			setIsLoadingConfig(false);
+		}
+	}, [apiConfiguration?.aiGatewayConfigUrl, apiConfiguration?.aiGatewayApiKey]);
 
 	useEffect(() => {
-		if (selectedProvider === "generic-aigateway") {
+		if (
+			selectedProvider === 'generic-aigateway' &&
+			apiConfiguration?.aiGatewayConfigUrl &&
+			isValidUrl(apiConfiguration.aiGatewayConfigUrl)
+		) {
 			loadAIGatewayConfig();
+		} else {
+			setAiGatewayConfig(null);
 		}
-	}, [selectedProvider, loadAIGatewayConfig]);
+	}, [
+		selectedProvider,
+		apiConfiguration?.aiGatewayConfigUrl,
+		apiConfiguration?.aiGatewayApiKey,
+		loadAIGatewayConfig,
+	]);
 
 	const loadAIGatewayConfig = useCallback(async () => {
 		if (apiConfiguration?.aiGatewayConfigUrl) {
@@ -576,10 +612,23 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 						value={apiConfiguration?.aiGatewayConfigUrl || ""}
 						style={{ width: "100%" }}
 						type="url"
-						onInput={handleInputChange("aiGatewayConfigUrl")}
+						onInput={(event) => {
+							const value = event.target.value;
+							handleInputChange('aiGatewayConfigUrl')(event);
+							if (value && !isValidUrl(value)) {
+								setAiGatewayUrlError('Invalid URL');
+							} else {
+								setAiGatewayUrlError('');
+							}
+						}}
 						placeholder="Enter configuration URL...">
 						<span style={{ fontWeight: 500 }}>AIGateway Configuration URL</span>
 					</VSCodeTextField>
+					{aiGatewayUrlError && (
+						<p style={{ color: 'var(--vscode-errorForeground)', marginTop: 3 }}>
+							{aiGatewayUrlError}
+						</p>
+					)}
 					<VSCodeTextField
 						value={apiConfiguration?.aiGatewayApiKey || ""}
 						style={{ width: "100%" }}
@@ -588,7 +637,13 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 						placeholder="Enter API Key...">
 						<span style={{ fontWeight: 500 }}>AIGateway API Key</span>
 					</VSCodeTextField>
-					{aiGatewayConfig && (
+					{isLoadingConfig ? (
+						<p>Loading models...</p>
+					) : configLoadError ? (
+						<p style={{ color: 'var(--vscode-errorForeground)', marginTop: 3 }}>
+							{configLoadError}
+						</p>
+					) : aiGatewayConfig && aiGatewayConfig.models.length > 0 ? (
 						<div className="dropdown-container">
 							<label htmlFor="aigateway-model-id">
 								<span style={{ fontWeight: 500 }}>Model</span>
@@ -606,6 +661,10 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 								))}
 							</VSCodeDropdown>
 						</div>
+					) : (
+						<p style={{ marginTop: 3 }}>
+							No models available. Please check your configuration.
+						</p>
 					)}
 					<p style={{
 						fontSize: "12px",
@@ -624,10 +683,23 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 						value={apiConfiguration?.aiGatewayConfigUrl || ""}
 						style={{ width: "100%" }}
 						type="url"
-						onInput={handleInputChange("aiGatewayConfigUrl")}
+						onInput={(event) => {
+							const value = event.target.value;
+							handleInputChange('aiGatewayConfigUrl')(event);
+							if (value && !isValidUrl(value)) {
+								setAiGatewayUrlError('Invalid URL');
+							} else {
+								setAiGatewayUrlError('');
+							}
+						}}
 						placeholder="Enter configuration URL...">
 						<span style={{ fontWeight: 500 }}>AIGateway Configuration URL</span>
 					</VSCodeTextField>
+					{aiGatewayUrlError && (
+						<p style={{ color: 'var(--vscode-errorForeground)', marginTop: 3 }}>
+							{aiGatewayUrlError}
+						</p>
+					)}
 					<VSCodeTextField
 						value={apiConfiguration?.aiGatewayApiKey || ""}
 						style={{ width: "100%" }}
@@ -636,7 +708,13 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 						placeholder="Enter API Key...">
 						<span style={{ fontWeight: 500 }}>AIGateway API Key</span>
 					</VSCodeTextField>
-					{aiGatewayConfig && (
+					{isLoadingConfig ? (
+						<p>Loading models...</p>
+					) : configLoadError ? (
+						<p style={{ color: 'var(--vscode-errorForeground)', marginTop: 3 }}>
+							{configLoadError}
+						</p>
+					) : aiGatewayConfig && aiGatewayConfig.models.length > 0 ? (
 						<div className="dropdown-container">
 							<label htmlFor="aigateway-model-id">
 								<span style={{ fontWeight: 500 }}>Model</span>
@@ -654,6 +732,10 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 								))}
 							</VSCodeDropdown>
 						</div>
+					) : (
+						<p style={{ marginTop: 3 }}>
+							No models available. Please check your configuration.
+						</p>
 					)}
 					<p style={{
 						fontSize: "12px",
