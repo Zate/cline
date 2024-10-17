@@ -116,7 +116,6 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 			setIsLoadingConfig(false);
 		}
 	}, [apiConfiguration?.aiGatewayConfigUrl, apiConfiguration?.aiGatewayApiKey, setAiGatewayConfig]);
-	}, [apiConfiguration?.aiGatewayConfigUrl, apiConfiguration?.aiGatewayApiKey]);
 
 	useEffect(() => {
 		if (
@@ -883,53 +882,16 @@ export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration, a
 				selectedModelInfo: openAiModelInfoSaneDefaults,
 			}
 		case "generic-aigateway":
-					maxTokens: undefined,
-					contextWindow: undefined,
-					supportsImages: false,
-					supportsPromptCache: false,
-					description: "Generic AIGateway model",
-				},
-			}
-		case "generic-aigateway":
-			if (aiGatewayConfig && apiConfiguration?.apiModelId) {
-				const selectedModel = aiGatewayConfig.models.find(m => m.id === apiConfiguration.apiModelId);
-				if (selectedModel) {
-					return {
-						selectedProvider: provider,
-						selectedModelId: selectedModel.id,
-						selectedModelInfo: selectedModel.info,
-					};
+								maxTokens: undefined,
+								contextWindow: undefined,
+								supportsImages: false,
+								supportsPromptCache: false,
+								description: "Generic AIGateway model",
+							},
+						};
+					default:
+						return getProviderData(anthropicModels, anthropicDefaultModelId);
 				}
-			}
-			return {
-				selectedProvider: provider,
-				selectedModelId: apiConfiguration?.apiModelId || "",
-				selectedModelInfo: {
-					maxTokens: undefined,
-					contextWindow: undefined,
-					supportsImages: false,
-					supportsPromptCache: false,
-					description: "Generic AIGateway model",
-				},
-			}
-		case "generic-aigateway":
-			if (aiGatewayConfig && apiConfiguration?.apiModelId) {
-				const selectedModel = aiGatewayConfig.models.find(m => m.id === apiConfiguration.apiModelId);
-				if (selectedModel) {
-					return {
-						selectedProvider: provider,
-						selectedModelId: selectedModel.id,
-						selectedModelInfo: selectedModel.info,
-					};
-				}
-			}
-			return {
-				selectedProvider: provider,
-				selectedModelId: apiConfiguration?.apiModelId || "",
-				selectedModelInfo: {
-					...openAiModelInfoSaneDefaults,
-					description: "Generic AIGateway model",
-				},
 			}
 		default:
 			return getProviderData(anthropicModels, anthropicDefaultModelId)
