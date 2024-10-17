@@ -53,6 +53,7 @@
   },
   "devDependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
-    "@types/vscode-webview": "^1.57.5"
+    "@types/vscode-webview": "^1.57.5",
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11"
   }
 }

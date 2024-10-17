@@ -51,13 +51,6 @@ interface ApiOptionsProps {
 	modelIdErrorMessage?: string
 }
 
-interface AIGatewayConfig {
-    baseURL: string;
-    models: { id: string; info: ModelInfo }[];
-    headers: { [key: string]: string };
-}
-
-
 const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: ApiOptionsProps) => {
 	const { apiConfiguration, setApiConfiguration, uriScheme } = useExtensionState()
 	const [ollamaModels, setOllamaModels] = useState<string[]>([])
@@ -122,6 +115,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 		} finally {
 			setIsLoadingConfig(false);
 		}
+	}, [apiConfiguration?.aiGatewayConfigUrl, apiConfiguration?.aiGatewayApiKey, setAiGatewayConfig]);
 	}, [apiConfiguration?.aiGatewayConfigUrl, apiConfiguration?.aiGatewayApiKey]);
 
 	useEffect(() => {
@@ -138,7 +132,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 		selectedProvider,
 		apiConfiguration?.aiGatewayConfigUrl,
 		apiConfiguration?.aiGatewayApiKey,
-		loadAIGatewayConfig,
+		loadAIGatewayConfig, setAiGatewayConfig,
 		setAiGatewayConfig,
 		setAiGatewayConfig,
 	]);
@@ -147,7 +141,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 		if (selectedProvider === "generic-aigateway") {
 			loadAIGatewayConfig();
 		}
-	}, [selectedProvider, loadAIGatewayConfig]);
+	}, [selectedProvider, loadAIGatewayConfig, setAiGatewayConfig]);
 
 	/*
 	VSCodeDropdown has an open bug where dynamically rendered options don't auto select the provided value prop. You can see this for yourself by comparing  it with normal select/option elements, which work as expected.
@@ -605,6 +599,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 							}
 						}}
 						placeholder="Enter configuration URL...">
+						aria-label="AIGateway Configuration URL"
 						<span style={{ fontWeight: 500 }}>AIGateway Configuration URL</span>
 					</VSCodeTextField>
 					{aiGatewayUrlError && (
@@ -617,77 +612,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 						style={{ width: "100%" }}
 						type="password"
 						onInput={handleInputChange("aiGatewayApiKey")}
-						placeholder="Enter API Key...">
-						<span style={{ fontWeight: 500 }}>AIGateway API Key</span>
-					</VSCodeTextField>
-					{isLoadingConfig ? (
-						<p>Loading models...</p>
-					) : configLoadError ? (
-						<p style={{ color: 'var(--vscode-errorForeground)', marginTop: 3 }}>
-							{configLoadError}
-						</p>
-					) : aiGatewayConfig && aiGatewayConfig.models.length > 0 ? (
-						<div className="dropdown-container">
-							<label htmlFor="aigateway-model-id">
-								<span style={{ fontWeight: 500 }}>Model</span>
-							</label>
-							<VSCodeDropdown
-								id="aigateway-model-id"
-								value={apiConfiguration?.apiModelId || ""}
-								onChange={handleInputChange("apiModelId")}
-								style={{ width: "100%" }}>
-								<VSCodeOption value="">Select a model...</VSCodeOption>
-								{aiGatewayConfig.models.map((model) => (
-									<VSCodeOption key={model.id} value={model.id}>
-										{model.id}
-									</VSCodeOption>
-								))}
-							</VSCodeDropdown>
-						</div>
-					) : (
-						<p style={{ marginTop: 3 }}>
-							No models available. Please check your configuration.
-						</p>
-					)}
-					<p style={{
-						fontSize: "12px",
-						marginTop: 3,
-						color: "var(--vscode-descriptionForeground)",
-					}}>
-						Enter the URL of the JSON configuration file for your AIGateway and the API key if required.
-						This information is stored locally and only used to make API requests from this extension.
-					</p>
-				</div>
-			)}
-
-			{selectedProvider === "generic-aigateway" && (
-				<div>
-					<VSCodeTextField
-						value={apiConfiguration?.aiGatewayConfigUrl || ""}
-						style={{ width: "100%" }}
-						type="url"
-						onInput={(event) => {
-							const value = event.target.value;
-							handleInputChange('aiGatewayConfigUrl')(event);
-							if (value && !isValidUrl(value)) {
-								setAiGatewayUrlError('Invalid URL');
-							} else {
-								setAiGatewayUrlError('');
-							}
-						}}
-						placeholder="Enter configuration URL...">
-						<span style={{ fontWeight: 500 }}>AIGateway Configuration URL</span>
-					</VSCodeTextField>
-					{aiGatewayUrlError && (
-						<p style={{ color: 'var(--vscode-errorForeground)', marginTop: 3 }}>
-							{aiGatewayUrlError}
-						</p>
-					)}
-					<VSCodeTextField
-						value={apiConfiguration?.aiGatewayApiKey || ""}
-						style={{ width: "100%" }}
-						type="password"
-						onInput={handleInputChange("aiGatewayApiKey")}
+						aria-label="AIGateway API Key"
 						placeholder="Enter API Key...">
 						<span style={{ fontWeight: 500 }}>AIGateway API Key</span>
 					</VSCodeTextField>
@@ -958,20 +883,6 @@ export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration, a
 				selectedModelInfo: openAiModelInfoSaneDefaults,
 			}
 		case "generic-aigateway":
-			if (aiGatewayConfig && apiConfiguration?.apiModelId) {
-				const selectedModel = aiGatewayConfig.models.find(m => m.id === apiConfiguration.apiModelId);
-				if (selectedModel) {
-					return {
-						selectedProvider: provider,
-						selectedModelId: selectedModel.id,
-						selectedModelInfo: selectedModel.info,
-					};
-				}
-			}
-			return {
-				selectedProvider: provider,
-				selectedModelId: apiConfiguration?.apiModelId || "",
-				selectedModelInfo: {
 					maxTokens: undefined,
 					contextWindow: undefined,
 					supportsImages: false,

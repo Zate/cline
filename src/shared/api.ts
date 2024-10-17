@@ -266,4 +266,3 @@ export const openAiNativeModels = {
 // Azure OpenAI
 // https://learn.microsoft.com/en-us/azure/ai-services/openai/api-version-deprecation
 // https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#api-specs
-export const azureOpenAiDefaultApiVersion = "2024-08-01-preview"
