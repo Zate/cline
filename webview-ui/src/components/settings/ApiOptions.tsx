@@ -57,11 +57,6 @@ interface AIGatewayConfig {
     headers: { [key: string]: string };
 }
 
-interface AIGatewayConfig {
-    baseURL: string;
-    models: { id: string; info: ModelInfo }[];
-    headers: { [key: string]: string };
-}
 
 const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: ApiOptionsProps) => {
 	const { apiConfiguration, setApiConfiguration, uriScheme } = useExtensionState()
@@ -69,7 +64,6 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 	const [anthropicBaseUrlSelected, setAnthropicBaseUrlSelected] = useState(!!apiConfiguration?.anthropicBaseUrl)
 	const [azureApiVersionSelected, setAzureApiVersionSelected] = useState(!!apiConfiguration?.azureApiVersion)
 	const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
-	const [aiGatewayConfig, setAiGatewayConfig] = useState<AIGatewayConfig | null>(null)
 	const [aiGatewayConfig, setAiGatewayConfig] = useState<AIGatewayConfig | null>(null)
 	const [aiGatewayUrlError, setAiGatewayUrlError] = useState<string>('');
 	const [isLoadingConfig, setIsLoadingConfig] = useState<boolean>(false);
@@ -145,20 +139,9 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 		apiConfiguration?.aiGatewayConfigUrl,
 		apiConfiguration?.aiGatewayApiKey,
 		loadAIGatewayConfig,
+		setAiGatewayConfig,
+		setAiGatewayConfig,
 	]);
-
-	const loadAIGatewayConfig = useCallback(async () => {
-		if (apiConfiguration?.aiGatewayConfigUrl) {
-			try {
-				const response = await fetch(apiConfiguration.aiGatewayConfigUrl);
-				const config: AIGatewayConfig = await response.json();
-				setAiGatewayConfig(config);
-			} catch (error) {
-				console.error("Failed to load AIGateway configuration:", error);
-				setAiGatewayConfig(null);
-			}
-		}
-	}, [apiConfiguration?.aiGatewayConfigUrl]);
 
 	useEffect(() => {
 		if (selectedProvider === "generic-aigateway") {
