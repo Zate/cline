@@ -42,20 +42,27 @@ interface ApiOptionsProps {
 	modelIdErrorMessage?: string
 }
 
+interface AIGatewayConfig {
+    baseURL: string;
+    models: { id: string; info: ModelInfo }[];
+    headers: { [key: string]: string };
+}
+
 const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: ApiOptionsProps) => {
 	const { apiConfiguration, setApiConfiguration, uriScheme } = useExtensionState()
 	const [ollamaModels, setOllamaModels] = useState<string[]>([])
 	const [anthropicBaseUrlSelected, setAnthropicBaseUrlSelected] = useState(!!apiConfiguration?.anthropicBaseUrl)
 	const [azureApiVersionSelected, setAzureApiVersionSelected] = useState(!!apiConfiguration?.azureApiVersion)
 	const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+	const [aiGatewayConfig, setAiGatewayConfig] = useState<AIGatewayConfig | null>(null)
 
 	const handleInputChange = (field: keyof ApiConfiguration) => (event: any) => {
 		setApiConfiguration({ ...apiConfiguration, [field]: event.target.value })
 	}
 
 	const { selectedProvider, selectedModelId, selectedModelInfo } = useMemo(() => {
-		return normalizeApiConfiguration(apiConfiguration)
-	}, [apiConfiguration])
+		return normalizeApiConfiguration(apiConfiguration, aiGatewayConfig)
+	}, [apiConfiguration, aiGatewayConfig])
 
 	// Poll ollama models
 	const requestOllamaModels = useCallback(() => {
@@ -77,6 +84,25 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 		}
 	}, [])
 	useEvent("message", handleMessage)
+
+	const loadAIGatewayConfig = useCallback(async () => {
+		if (apiConfiguration?.aiGatewayConfigUrl) {
+			try {
+				const response = await fetch(apiConfiguration.aiGatewayConfigUrl);
+				const config: AIGatewayConfig = await response.json();
+				setAiGatewayConfig(config);
+			} catch (error) {
+				console.error("Failed to load AIGateway configuration:", error);
+				setAiGatewayConfig(null);
+			}
+		}
+	}, [apiConfiguration?.aiGatewayConfigUrl]);
+
+	useEffect(() => {
+		if (selectedProvider === "generic-aigateway") {
+			loadAIGatewayConfig();
+		}
+	}, [selectedProvider, loadAIGatewayConfig]);
 
 	/*
 	VSCodeDropdown has an open bug where dynamically rendered options don't auto select the provided value prop. You can see this for yourself by comparing  it with normal select/option elements, which work as expected.
@@ -129,6 +155,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 					<VSCodeOption value="openai-native">OpenAI</VSCodeOption>
 					<VSCodeOption value="openai">OpenAI Compatible</VSCodeOption>
 					<VSCodeOption value="ollama">Ollama</VSCodeOption>
+					<VSCodeOption value="generic-aigateway">Generic AIGateway</VSCodeOption>
 				</VSCodeDropdown>
 			</div>
 
@@ -517,6 +544,54 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 				</div>
 			)}
 
+			{selectedProvider === "generic-aigateway" && (
+				<div>
+					<VSCodeTextField
+						value={apiConfiguration?.aiGatewayConfigUrl || ""}
+						style={{ width: "100%" }}
+						type="url"
+						onInput={handleInputChange("aiGatewayConfigUrl")}
+						placeholder="Enter configuration URL...">
+						<span style={{ fontWeight: 500 }}>AIGateway Configuration URL</span>
+					</VSCodeTextField>
+					<VSCodeTextField
+						value={apiConfiguration?.aiGatewayApiKey || ""}
+						style={{ width: "100%" }}
+						type="password"
+						onInput={handleInputChange("aiGatewayApiKey")}
+						placeholder="Enter API Key...">
+						<span style={{ fontWeight: 500 }}>AIGateway API Key</span>
+					</VSCodeTextField>
+					{aiGatewayConfig && (
+						<div className="dropdown-container">
+							<label htmlFor="aigateway-model-id">
+								<span style={{ fontWeight: 500 }}>Model</span>
+							</label>
+							<VSCodeDropdown
+								id="aigateway-model-id"
+								value={apiConfiguration?.apiModelId || ""}
+								onChange={handleInputChange("apiModelId")}
+								style={{ width: "100%" }}>
+								<VSCodeOption value="">Select a model...</VSCodeOption>
+								{aiGatewayConfig.models.map((model) => (
+									<VSCodeOption key={model.id} value={model.id}>
+										{model.id}
+									</VSCodeOption>
+								))}
+							</VSCodeDropdown>
+						</div>
+					)}
+					<p style={{
+						fontSize: "12px",
+						marginTop: 3,
+						color: "var(--vscode-descriptionForeground)",
+					}}>
+						Enter the URL of the JSON configuration file for your AIGateway and the API key if required.
+						This information is stored locally and only used to make API requests from this extension.
+					</p>
+				</div>
+			)}
+
 			{apiErrorMessage && (
 				<p
 					style={{
@@ -533,6 +608,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 			{selectedProvider !== "openrouter" &&
 				selectedProvider !== "openai" &&
 				selectedProvider !== "ollama" &&
+				selectedProvider !== "generic-aigateway" &&
 				showModelOptions && (
 					<>
 						<div className="dropdown-container">
@@ -581,6 +657,34 @@ export const formatPrice = (price: number) => {
 		maximumFractionDigits: 2,
 	}).format(price)
 }
+
+const ModelInfoSupportsItem = ({
+	isSupported,
+	supportsLabel,
+	doesNotSupportLabel,
+}: {
+	isSupported: boolean
+	supportsLabel: string
+	doesNotSupportLabel: string
+}) => (
+	<span
+		style={{
+			fontWeight: 500,
+			color: isSupported ? "var(--vscode-charts-green)" : "var(--vscode-errorForeground)",
+		}}>
+		<i
+			className={`codicon codicon-${isSupported ? "check" : "x"}`}
+			style={{
+				marginRight: 4,
+				marginBottom: isSupported ? 1 : -1,
+				fontSize: isSupported ? 11 : 13,
+				fontWeight: 700,
+				display: "inline-block",
+				verticalAlign: "bottom",
+			}}></i>
+		{isSupported ? supportsLabel : doesNotSupportLabel}
+	</span>
+)
 
 export const ModelInfoView = ({
 	selectedModelId,
@@ -669,35 +773,7 @@ export const ModelInfoView = ({
 	)
 }
 
-const ModelInfoSupportsItem = ({
-	isSupported,
-	supportsLabel,
-	doesNotSupportLabel,
-}: {
-	isSupported: boolean
-	supportsLabel: string
-	doesNotSupportLabel: string
-}) => (
-	<span
-		style={{
-			fontWeight: 500,
-			color: isSupported ? "var(--vscode-charts-green)" : "var(--vscode-errorForeground)",
-		}}>
-		<i
-			className={`codicon codicon-${isSupported ? "check" : "x"}`}
-			style={{
-				marginRight: 4,
-				marginBottom: isSupported ? 1 : -1,
-				fontSize: isSupported ? 11 : 13,
-				fontWeight: 700,
-				display: "inline-block",
-				verticalAlign: "bottom",
-			}}></i>
-		{isSupported ? supportsLabel : doesNotSupportLabel}
-	</span>
-)
-
-export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration) {
+export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration, aiGatewayConfig?: AIGatewayConfig | null) {
 	const provider = apiConfiguration?.apiProvider || "anthropic"
 	const modelId = apiConfiguration?.apiModelId
 
@@ -741,6 +817,28 @@ export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration) {
 				selectedProvider: provider,
 				selectedModelId: apiConfiguration?.ollamaModelId || "",
 				selectedModelInfo: openAiModelInfoSaneDefaults,
+			}
+		case "generic-aigateway":
+			if (aiGatewayConfig && apiConfiguration?.apiModelId) {
+				const selectedModel = aiGatewayConfig.models.find(m => m.id === apiConfiguration.apiModelId);
+				if (selectedModel) {
+					return {
+						selectedProvider: provider,
+						selectedModelId: selectedModel.id,
+						selectedModelInfo: selectedModel.info,
+					};
+				}
+			}
+			return {
+				selectedProvider: provider,
+				selectedModelId: apiConfiguration?.apiModelId || "",
+				selectedModelInfo: {
+					maxTokens: undefined,
+					contextWindow: undefined,
+					supportsImages: false,
+					supportsPromptCache: false,
+					description: "Generic AIGateway model",
+				},
 			}
 		default:
 			return getProviderData(anthropicModels, anthropicDefaultModelId)
