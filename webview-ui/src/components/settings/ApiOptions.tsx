@@ -48,12 +48,19 @@ interface AIGatewayConfig {
     headers: { [key: string]: string };
 }
 
+interface AIGatewayConfig {
+    baseURL: string;
+    models: { id: string; info: ModelInfo }[];
+    headers: { [key: string]: string };
+}
+
 const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: ApiOptionsProps) => {
 	const { apiConfiguration, setApiConfiguration, uriScheme } = useExtensionState()
 	const [ollamaModels, setOllamaModels] = useState<string[]>([])
 	const [anthropicBaseUrlSelected, setAnthropicBaseUrlSelected] = useState(!!apiConfiguration?.anthropicBaseUrl)
 	const [azureApiVersionSelected, setAzureApiVersionSelected] = useState(!!apiConfiguration?.azureApiVersion)
 	const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+	const [aiGatewayConfig, setAiGatewayConfig] = useState<AIGatewayConfig | null>(null)
 	const [aiGatewayConfig, setAiGatewayConfig] = useState<AIGatewayConfig | null>(null)
 
 	const handleInputChange = (field: keyof ApiConfiguration) => (event: any) => {
@@ -84,6 +91,25 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 		}
 	}, [])
 	useEvent("message", handleMessage)
+
+	const loadAIGatewayConfig = useCallback(async () => {
+		if (apiConfiguration?.aiGatewayConfigUrl) {
+			try {
+				const response = await fetch(apiConfiguration.aiGatewayConfigUrl);
+				const config: AIGatewayConfig = await response.json();
+				setAiGatewayConfig(config);
+			} catch (error) {
+				console.error("Failed to load AIGateway configuration:", error);
+				setAiGatewayConfig(null);
+			}
+		}
+	}, [apiConfiguration?.aiGatewayConfigUrl]);
+
+	useEffect(() => {
+		if (selectedProvider === "generic-aigateway") {
+			loadAIGatewayConfig();
+		}
+	}, [selectedProvider, loadAIGatewayConfig]);
 
 	const loadAIGatewayConfig = useCallback(async () => {
 		if (apiConfiguration?.aiGatewayConfigUrl) {
@@ -592,6 +618,54 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 				</div>
 			)}
 
+			{selectedProvider === "generic-aigateway" && (
+				<div>
+					<VSCodeTextField
+						value={apiConfiguration?.aiGatewayConfigUrl || ""}
+						style={{ width: "100%" }}
+						type="url"
+						onInput={handleInputChange("aiGatewayConfigUrl")}
+						placeholder="Enter configuration URL...">
+						<span style={{ fontWeight: 500 }}>AIGateway Configuration URL</span>
+					</VSCodeTextField>
+					<VSCodeTextField
+						value={apiConfiguration?.aiGatewayApiKey || ""}
+						style={{ width: "100%" }}
+						type="password"
+						onInput={handleInputChange("aiGatewayApiKey")}
+						placeholder="Enter API Key...">
+						<span style={{ fontWeight: 500 }}>AIGateway API Key</span>
+					</VSCodeTextField>
+					{aiGatewayConfig && (
+						<div className="dropdown-container">
+							<label htmlFor="aigateway-model-id">
+								<span style={{ fontWeight: 500 }}>Model</span>
+							</label>
+							<VSCodeDropdown
+								id="aigateway-model-id"
+								value={apiConfiguration?.apiModelId || ""}
+								onChange={handleInputChange("apiModelId")}
+								style={{ width: "100%" }}>
+								<VSCodeOption value="">Select a model...</VSCodeOption>
+								{aiGatewayConfig.models.map((model) => (
+									<VSCodeOption key={model.id} value={model.id}>
+										{model.id}
+									</VSCodeOption>
+								))}
+							</VSCodeDropdown>
+						</div>
+					)}
+					<p style={{
+						fontSize: "12px",
+						marginTop: 3,
+						color: "var(--vscode-descriptionForeground)",
+					}}>
+						Enter the URL of the JSON configuration file for your AIGateway and the API key if required.
+						This information is stored locally and only used to make API requests from this extension.
+					</p>
+				</div>
+			)}
+
 			{apiErrorMessage && (
 				<p
 					style={{
@@ -817,6 +891,28 @@ export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration, a
 				selectedProvider: provider,
 				selectedModelId: apiConfiguration?.ollamaModelId || "",
 				selectedModelInfo: openAiModelInfoSaneDefaults,
+			}
+		case "generic-aigateway":
+			if (aiGatewayConfig && apiConfiguration?.apiModelId) {
+				const selectedModel = aiGatewayConfig.models.find(m => m.id === apiConfiguration.apiModelId);
+				if (selectedModel) {
+					return {
+						selectedProvider: provider,
+						selectedModelId: selectedModel.id,
+						selectedModelInfo: selectedModel.info,
+					};
+				}
+			}
+			return {
+				selectedProvider: provider,
+				selectedModelId: apiConfiguration?.apiModelId || "",
+				selectedModelInfo: {
+					maxTokens: undefined,
+					contextWindow: undefined,
+					supportsImages: false,
+					supportsPromptCache: false,
+					description: "Generic AIGateway model",
+				},
 			}
 		case "generic-aigateway":
 			if (aiGatewayConfig && apiConfiguration?.apiModelId) {
