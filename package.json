@@ -135,6 +135,7 @@
     "publish:marketplace": "vsce publish && ovsx publish"
   },
   "devDependencies": {
+    "@types/bonjour": "^3.5.13",
     "@types/diff": "^5.2.1",
     "@types/mocha": "^10.0.7",
     "@types/node": "20.x",

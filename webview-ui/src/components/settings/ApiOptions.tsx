@@ -36,6 +36,16 @@ import OpenRouterModelPicker, {
 	OPENROUTER_MODEL_PICKER_Z_INDEX,
 } from "./OpenRouterModelPicker"
 
+interface AIGatewayConfig {
+  host: string;
+  baseUri?: string;
+  headers?: Record<string, string>;
+  models: Array<{
+    id: string;
+    info: ModelInfo;
+  }>;
+}
+
 function isValidUrl(url: string): boolean {
 	try {
 		new URL(url);
@@ -62,8 +72,9 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 	const [isLoadingConfig, setIsLoadingConfig] = useState<boolean>(false);
 	const [configLoadError, setConfigLoadError] = useState<string>('');
 
-	const handleInputChange = (field: keyof ApiConfiguration) => (event: any) => {
-		setApiConfiguration({ ...apiConfiguration, [field]: event.target.value })
+	const handleInputChange = (field: keyof ApiConfiguration) => (event: React.FormEvent<HTMLElement>) => {
+		const target = event.target as HTMLInputElement;
+		setApiConfiguration({ ...apiConfiguration, [field]: target.value })
 	}
 
 	const { selectedProvider, selectedModelId, selectedModelInfo } = useMemo(() => {
@@ -115,7 +126,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 		} finally {
 			setIsLoadingConfig(false);
 		}
-	}, [apiConfiguration?.aiGatewayConfigUrl, apiConfiguration?.aiGatewayApiKey, setAiGatewayConfig]);
+	}, [apiConfiguration?.aiGatewayConfigUrl, apiConfiguration?.aiGatewayApiKey]);
 
 	useEffect(() => {
 		if (
@@ -138,7 +149,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 		if (selectedProvider === "generic-aigateway") {
 			loadAIGatewayConfig();
 		}
-	}, [selectedProvider, loadAIGatewayConfig, setAiGatewayConfig]);
+	}, [selectedProvider, loadAIGatewayConfig]);
 
 	/*
 	VSCodeDropdown has an open bug where dynamically rendered options don't auto select the provided value prop. You can see this for yourself by comparing  it with normal select/option elements, which work as expected.
@@ -208,8 +219,8 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 
 					<VSCodeCheckbox
 						checked={anthropicBaseUrlSelected}
-						onChange={(e: any) => {
-							const isChecked = e.target.checked === true
+						onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+							const isChecked = e.target.checked
 							setAnthropicBaseUrlSelected(isChecked)
 							if (!isChecked) {
 								setApiConfiguration({ ...apiConfiguration, anthropicBaseUrl: "" })
@@ -485,8 +496,8 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 					</VSCodeTextField>
 					<VSCodeCheckbox
 						checked={azureApiVersionSelected}
-						onChange={(e: any) => {
-							const isChecked = e.target.checked === true
+						onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+							const isChecked = e.target.checked
 							setAzureApiVersionSelected(isChecked)
 							if (!isChecked) {
 								setApiConfiguration({ ...apiConfiguration, azureApiVersion: "" })
@@ -540,13 +551,13 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 									? apiConfiguration?.ollamaModelId
 									: ""
 							}
-							onChange={(e) => {
-								const value = (e.target as HTMLInputElement)?.value
+							onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+								const value = e.target.value
 								// need to check value first since radio group returns empty string sometimes
 								if (value) {
 									handleInputChange("ollamaModelId")({
 										target: { value },
-									})
+									} as React.ChangeEvent<HTMLInputElement>)
 								}
 							}}>
 							{ollamaModels.map((model) => (
@@ -586,7 +597,7 @@ const ApiOptions = ({ showModelOptions, apiErrorMessage, modelIdErrorMessage }: 
 						value={apiConfiguration?.aiGatewayConfigUrl || ""}
 						style={{ width: "100%" }}
 						type="url"
-						onInput={(event) => {
+						onInput={(event: React.ChangeEvent<HTMLInputElement>) => {
 							const value = event.target.value;
 							handleInputChange('aiGatewayConfigUrl')(event);
 							if (value && !isValidUrl(value)) {
@@ -910,12 +921,3 @@ export function normalizeApiConfiguration(
 }
 
 export default memo(ApiOptions)
-interface AIGatewayConfig {
-  host: string;
-  baseUri?: string;
-  headers?: Record<string, string>;
-  models: Array<{
-    id: string;
-    info: ModelInfo;
-  }>;
-}
